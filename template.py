@@ -216,7 +216,12 @@ def fullyconn(Input, Weight):
     Output: tvm.tensor.Tensor
         2-D with shape [batch_size, out_size]
     """
-    pass
+    batch_size, input_size = Input.shape()
+    input_size1, out_size = Weight.shape()
+    assert input_size == input_size1  # they should have the same corresponding dimension
+    a = tvm.reduce_axis((0, input_size), name='a')
+    fconn = tvm.compute((batch_size,out_size),lambda i, j:tvm.sum(Input[i,k] * Weight[k,j], axis = k), name='fconn')
+    return fconn
 
 def fullyconnb(Input, Weight, POutput):
     """
@@ -238,4 +243,16 @@ def fullyconnb(Input, Weight, POutput):
     PInput: tvm.tensor.Tensor, gradient of Input
         2-D with shape (Input.shape)
     """
-    pass
+    batch_size, input_size = Input.shape()
+    input_size1, out_size = Weight.shape()
+    batch_size1, out_size1 = POutput.shape()
+    assert input_size == input_size1
+    assert out_size == out_size1
+    assert batch_size == batch_size1
+
+
+    n = tvm.reduce_axis((input_size, 0), name='n')
+    PWeight = tvm.compute((input_size,out_size),lambda k,i:tvm.sum(Input[n,k] * POutput[n,i], axis=n), name='PWeight')
+    i = tvm.reduce_axis((0,out_size), name='i')
+    PInput = tvm.compute((batch_size,input_size),lambda n,k:tvm.sum(POutput[n,i] * Weight[k,i], axis=i), name='PInput')
+    return PWeight, PInput
